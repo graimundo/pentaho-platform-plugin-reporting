@@ -91,7 +91,7 @@ public class PageableHTMLOutput implements ReportOutputHandler
     this.proc = proc;
   }  
   
-  protected PageableReportProcessor createReportProcessor(final MasterReport report, final int yieldRate)
+  public PageableReportProcessor createReportProcessor(final MasterReport report, final int yieldRate)
       throws ReportProcessingException
   {
 

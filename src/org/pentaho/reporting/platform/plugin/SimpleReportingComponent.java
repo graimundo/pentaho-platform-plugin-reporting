@@ -43,7 +43,10 @@ import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.reporting.engine.classic.core.AttributeNames;
 import org.pentaho.reporting.engine.classic.core.ClassicEngineBoot;
 import org.pentaho.reporting.engine.classic.core.MasterReport;
+import org.pentaho.reporting.engine.classic.core.event.ReportProgressEvent;
+import org.pentaho.reporting.engine.classic.core.event.ReportProgressListener;
 import org.pentaho.reporting.engine.classic.core.metadata.ReportProcessTaskRegistry;
+import org.pentaho.reporting.engine.classic.core.modules.output.pageable.base.PageableReportProcessor;
 import org.pentaho.reporting.engine.classic.core.modules.output.pageable.pdf.PdfPageableModule;
 import org.pentaho.reporting.engine.classic.core.modules.output.pageable.plaintext.PlainTextPageableModule;
 import org.pentaho.reporting.engine.classic.core.modules.output.pageable.xml.XmlPageableModule;
@@ -146,6 +149,7 @@ public class SimpleReportingComponent implements IStreamingPojo, IAcceptsRuntime
   private boolean paginateOutput;
   private int acceptedPage;
   private int pageCount;
+  private int numberOfRows = -1;
   private boolean dashboardMode;
   /*
    * These fields are for enabling printing
@@ -1016,6 +1020,15 @@ public class SimpleReportingComponent implements IStreamingPojo, IAcceptsRuntime
     return pageCount;
   }
 
+  public int getNumberOfRows() {
+    return this.numberOfRows;
+  }
+
+  protected SimpleReportingComponent setNumberOfRows( int numberOfRows ) {
+    this.numberOfRows = numberOfRows;
+    return this;
+  }
+
   /**
    * Determines if the output type supports pagination or not.
    *
@@ -1125,6 +1138,27 @@ public class SimpleReportingComponent implements IStreamingPojo, IAcceptsRuntime
       {
         try
         {
+          if ( reportOutputHandler instanceof PageableHTMLOutput ) {
+            PageableHTMLOutput outputHandler = ((PageableHTMLOutput) reportOutputHandler);
+            PageableReportProcessor processor = outputHandler.createReportProcessor( report, this.getYieldRate() ); // Make sure that the report processor exists
+            if ( processor != null ) {
+              outputHandler.setReportProcessor( processor );
+              final SimpleReportingComponent reportingComponent = this;
+              processor.addReportProgressListener( new ReportProgressListener() {
+                @Override
+                public void reportProcessingStarted( ReportProgressEvent event ) {}
+
+                @Override
+                public void reportProcessingUpdate( ReportProgressEvent event ) {}
+
+                @Override
+                public void reportProcessingFinished( ReportProgressEvent event ) {
+                  reportingComponent.setNumberOfRows( event.getMaximumRow() );
+                }
+              });
+            }
+          }
+
           pageCount = reportOutputHandler.generate(report, acceptedPage, outputStream, getYieldRate());
           return pageCount != -1;
         }
